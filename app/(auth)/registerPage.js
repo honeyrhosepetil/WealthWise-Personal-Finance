@@ -1,44 +1,75 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome'; // Import the Icon component
+import {useFocusEffect, router } from "expo-router";
+import { auth, db } from '../../config/FirebaseConfig';
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
-const RegisterScreen = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+const RegisterScreen = () => {
+  const [user, setUser] = useState({
+      userName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+  })
 
-  const handleRegister = () => {
-    if (password === confirmPassword) {
-      // Proceed with registration logic here
-      // For example, validate inputs and navigate to the next screen
-      navigation.navigate('Dashboard');
-    } else {
-      setErrorMessage('Passwords do not match');
-    }
-  };
+  useFocusEffect(
+      React.useCallback(() => {
+          setUser({userName: "", email: "", password: "", confirmPassword: ""})
+      }, [])
+  );
+
+  const handleRegister = async () => {
+    if (user.password !== user.confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+  }
+
+    try {
+        await createUserWithEmailAndPassword(auth, user.email, user.password);
+        const currentUser = auth.currentUser;
+        console.log(currentUser);
+        if (currentUser) {
+            await setDoc(doc(db, "Users", currentUser.uid), {
+                email: currentUser.email,
+                userName: user.userName,
+            })
+        };
+        Alert.alert("Registration Successful!");
+        router.push("/dashboardPage")
+    } catch(error) {
+      if (error instanceof Error) {
+          Alert.alert("Registration Error", error.message);
+      } else {
+          console.error("Unknown registration:", error);
+      }
+    };
+  }
+
 
   return (
     <View style={styles.container}>
       {/* Logo at the top */}
-      <Image source={require('../assets/images/WealthWise-Logo.png')} style={styles.logo} />
+      <Image source={require('../../assets/images/WealthWise-Logo.png')} style={styles.logo} />
 
       <TextInput
         style={styles.input}
         placeholder="Enter your name"
         placeholderTextColor="#aaa"
-        value={name}
-        onChangeText={setName}
+        onChangeText={(text) => setUser((prev) => ({ ...prev, userName: text }))}
+        value={user.userName}
+        autoCapitalize='none'
       />
 
       <TextInput
         style={styles.input}
         placeholder="Enter your email"
         placeholderTextColor="#aaa"
-        value={email}
-        onChangeText={setEmail}
+        onChangeText={(text) => setUser((prev) => ({ ...prev, email: text }))}
+        value={user.email}
         keyboardType="email-address"
+        autoCapitalize='none'
       />
 
       <TextInput
@@ -46,17 +77,16 @@ const RegisterScreen = ({ navigation }) => {
         placeholder="Password"
         placeholderTextColor="#aaa"
         secureTextEntry
-        value={password}
-        onChangeText={setPassword}
+        onChangeText={(text) => setUser((prev) => ({ ...prev, password: text }))}
+        value={user.password}
       />
 
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
         placeholderTextColor="#aaa"
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
+        onChangeText={(text) => setUser((prev) => ({ ...prev, confirmPassword: text }))}
+        value={user.confirmPassword}
       />
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -81,7 +111,7 @@ const RegisterScreen = ({ navigation }) => {
 
       <Text style={styles.loginText}>
         Already have an account?{' '}
-        <Text style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.loginLink} onPress={() => router.push('/auth/loginPage')}>
           Login now
         </Text>
       </Text>

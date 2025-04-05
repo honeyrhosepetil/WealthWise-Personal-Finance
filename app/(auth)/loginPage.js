@@ -1,8 +1,37 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome'; // Icons in UI
+import {useFocusEffect, router } from "expo-router";
+import { auth, db } from '../../config/FirebaseConfig';
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = () => {
+  const [user, setUser] = useState({
+        email: "",
+        password: "",
+    })
+  
+    useFocusEffect(
+        React.useCallback(() => {
+            setUser({email: "", password: ""})
+        }, [])
+    );
+
+    const handleLogin = async () => {
+        try {
+            await signInWithEmailAndPassword(auth, user.email, user.password);
+            console.log("User signe in successfully!");
+            router.push("/dashboardPage")
+        } catch(error) {
+          if (error instanceof Error) {
+              Alert.alert("Authentication Error", "Invalid email or password!");
+          } else {
+              console.error("Unknown error during authentication:", error);
+          }
+        };
+      }
+
   const [passwordVisible, setPasswordVisible] = useState(false);  
 
   const togglePasswordVisibility = () => {
@@ -12,13 +41,17 @@ const LoginScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Logo */}
-      <Image source={require('../assets/images/WealthWise-Logo.png')} style={styles.logo} />
+      <Image source={require('../../assets/images/WealthWise-Logo.png')} style={styles.logo} />
 
       {/* Username Input */}
       <TextInput
         style={styles.input}
         placeholder="Enter username"
         placeholderTextColor="#aaa"
+        onChangeText={(text) => setUser((prev) => ({ ...prev, email: text }))}
+        value={user.email}
+        keyboardType="email-address"
+        autoCapitalize='none'
       />
 
       {/* Password Input */}
@@ -28,6 +61,8 @@ const LoginScreen = ({ navigation }) => {
           placeholder="Password"
           placeholderTextColor="#aaa"
           secureTextEntry={!passwordVisible}
+          onChangeText={(text) => setUser((prev) => ({ ...prev, password: text }))}
+          value={user.password}
         />
         <TouchableOpacity onPress={togglePasswordVisibility} style={styles.eyeIcon}>
           <Icon name={passwordVisible ? 'eye' : 'eye-slash'} size={20} color="#aaa" />
@@ -40,7 +75,7 @@ const LoginScreen = ({ navigation }) => {
       </TouchableOpacity>
 
       {/* Sign In Button */}
-      <TouchableOpacity style={styles.signInButton} onPress={() => navigation.navigate('Dashboard')}>
+      <TouchableOpacity style={styles.signInButton} onPress={handleLogin}>
         <Text style={styles.signInText}>Sign In</Text>
       </TouchableOpacity>
 
@@ -63,7 +98,7 @@ const LoginScreen = ({ navigation }) => {
       {/* Register Link */}
       <Text style={styles.registerText}>
         Not a member?{' '}
-        <Text style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
+        <Text style={styles.registerLink} onPress={() => router.push('/auth/registerPage')}>
           Register now
         </Text>
       </Text>
